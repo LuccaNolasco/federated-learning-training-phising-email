@@ -30,6 +30,7 @@ from config import (
     MODEL_NAME, NUM_LABELS, FLOWER_CONFIG, 
     SERVER_CONFIG, TRAINING_CONFIG
 )
+from graph_utils import MetricsCollector, GraphGenerator, PerformanceMonitor
 
 class PhishingFedAvg(FedAvg):
     """Estratégia FedAvg personalizada para detecção de phishing."""
@@ -37,6 +38,8 @@ class PhishingFedAvg(FedAvg):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.round_metrics = []
+        self.metrics_collector = MetricsCollector()
+        self.performance_monitor = PerformanceMonitor()
     
     def aggregate_fit(
         self,
@@ -45,6 +48,9 @@ class PhishingFedAvg(FedAvg):
         failures: List[Union[Tuple[fl.server.client_proxy.ClientProxy, FitRes], BaseException]],
     ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
         """Agrega os resultados de treinamento dos clientes."""
+        
+        # Iniciar monitoramento do servidor para medir tempo de agregação
+        self.performance_monitor.start_monitoring()
         
         print(f"\n=== Rodada {server_round} - Agregação de Treinamento ===")
         print(f"Clientes que completaram o treinamento: {len(results)}")
@@ -73,6 +79,34 @@ class PhishingFedAvg(FedAvg):
                 avg_train_loss = np.mean(train_losses)
                 aggregated_metrics["avg_train_loss"] = avg_train_loss
                 print(f"Loss médio de treinamento: {avg_train_loss:.4f}")
+        
+        # Coletar apenas métricas de recursos dos clientes (energia e tempo)
+        for i, (_, fit_res) in enumerate(results):
+            client_id = i + 1  # ID baseado na posição
+            # Verificar se já existe entrada para este cliente neste round
+            if client_id not in self.metrics_collector.client_metrics:
+                self.metrics_collector.client_metrics[client_id] = {
+                    'accuracy': [],
+                    'precision': [],
+                    'recall': [],
+                    'f1': [],
+                    'energy_consumption': [],
+                    'processing_time': []
+                }
+            
+            # Adicionar apenas métricas de recursos
+            self.metrics_collector.client_metrics[client_id]['energy_consumption'].append(
+                fit_res.metrics.get("energy_consumption", 0.0)
+            )
+            self.metrics_collector.client_metrics[client_id]['processing_time'].append(
+                fit_res.metrics.get("processing_time", 0.0)
+            )
+        
+        # Coletar apenas métricas de recursos do servidor (agregação de treinamento)
+        server_energy, server_time = self.performance_monitor.stop_monitoring()
+        # Armazenar temporariamente para usar no aggregate_evaluate
+        self.temp_server_energy = server_energy
+        self.temp_server_time = server_time
         
         return aggregated_parameters, aggregated_metrics
     
@@ -155,6 +189,48 @@ class PhishingFedAvg(FedAvg):
             "clients": len(results)
         }
         self.round_metrics.append(round_summary)
+        
+        # Adicionar métricas completas do servidor (incluindo desempenho do modelo unificado)
+        server_energy = getattr(self, 'temp_server_energy', 0.0)
+        server_time = getattr(self, 'temp_server_time', 0.0)
+        
+        self.metrics_collector.add_server_metrics(
+            server_round,
+            aggregated_metrics.get("accuracy", 0.0),
+            aggregated_metrics.get("precision", 0.0),
+            aggregated_metrics.get("recall", 0.0),
+            aggregated_metrics.get("f1", 0.0),
+            server_energy,
+            server_time
+        )
+        
+        # Coletar apenas métricas de qualidade dos clientes (accuracy, precision, recall, f1)
+        for i, (_, evaluate_res) in enumerate(results):
+            client_id = i + 1  # ID baseado na posição
+            # Verificar se já existe entrada para este cliente
+            if client_id not in self.metrics_collector.client_metrics:
+                self.metrics_collector.client_metrics[client_id] = {
+                    'accuracy': [],
+                    'precision': [],
+                    'recall': [],
+                    'f1': [],
+                    'energy_consumption': [],
+                    'processing_time': []
+                }
+            
+            # Adicionar apenas métricas de qualidade
+            self.metrics_collector.client_metrics[client_id]['accuracy'].append(
+                evaluate_res.metrics.get("accuracy", 0.0)
+            )
+            self.metrics_collector.client_metrics[client_id]['precision'].append(
+                evaluate_res.metrics.get("precision", 0.0)
+            )
+            self.metrics_collector.client_metrics[client_id]['recall'].append(
+                evaluate_res.metrics.get("recall", 0.0)
+            )
+            self.metrics_collector.client_metrics[client_id]['f1'].append(
+                evaluate_res.metrics.get("f1", 0.0)
+            )
         
         return avg_loss, aggregated_metrics
     
@@ -272,6 +348,34 @@ def print_final_summary(strategy: PhishingFedAvg):
     print(f"  Recall: {final_metrics['recall']:.4f}")
     print(f"  Amostras totais: {final_metrics['samples']}")
     print(f"  Clientes participantes: {final_metrics['clients']}")
+    
+    # Gerar gráficos
+    print("\n" + "="*60)
+    print("GERANDO GRÁFICOS DE DESEMPENHO")
+    print("="*60)
+    
+    try:
+        graph_generator = GraphGenerator()
+        
+        # Gerar gráficos de métricas de ML
+        ml_chart_path = graph_generator.create_ml_metrics_chart(
+            strategy.metrics_collector.server_metrics,
+            strategy.metrics_collector.client_metrics
+        )
+        
+        # Gerar gráficos de recursos
+        resource_chart_path = graph_generator.create_resource_usage_chart(
+            strategy.metrics_collector.server_metrics,
+            strategy.metrics_collector.client_metrics
+        )
+        
+        print(f"\nGráficos salvos com sucesso:")
+        print(f"  - Métricas ML: {ml_chart_path}")
+        print(f"  - Uso de recursos: {resource_chart_path}")
+        
+    except Exception as e:
+        print(f"\nErro ao gerar gráficos: {e}")
+        print("Continuando sem gráficos...")
 
 def main():
     """Função principal para executar o servidor."""

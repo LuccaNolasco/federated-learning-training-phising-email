@@ -34,3 +34,7 @@ wandb>=0.15.0
 
 # Utilitários de sistema
 psutil>=5.9.0
+
+# Bibliotecas para geração de gráficos
+matplotlib>=3.7.0
+seaborn>=0.12.0

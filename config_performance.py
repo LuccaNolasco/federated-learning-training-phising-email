@@ -21,7 +21,7 @@ def get_performance_config():
             "num_train_epochs": 3,
             "per_device_train_batch_size": 8,
             "per_device_eval_batch_size": 8,
-            "logging_steps": 10,
+            "logging_steps": 100000,
             "load_best_model_at_end": True,
             "dataloader_pin_memory": True,  # GPU pode usar pin_memory
             "dataloader_num_workers": 2,    # GPU pode usar workers
@@ -38,7 +38,7 @@ def get_performance_config():
             "num_train_epochs": 1,           # Menos épocas
             "per_device_train_batch_size": 32,  # Batch maior para CPU
             "per_device_eval_batch_size": 64,   # Batch maior para avaliação
-            "logging_steps": 100,            # Menos logs
+            "logging_steps": 100000,            # Menos logs
             "load_best_model_at_end": False, # Sem carregamento do melhor modelo
             "dataloader_pin_memory": False,  # CPU não precisa de pin_memory
             "dataloader_num_workers": 0,     # CPU sem workers paralelos

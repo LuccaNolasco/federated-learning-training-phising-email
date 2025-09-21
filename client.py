@@ -28,6 +28,7 @@ from config import (
     FLOWER_CONFIG, SERVER_CONFIG
 )
 from config_performance import print_current_mode
+from graph_utils import PerformanceMonitor
 
 class PhishingFlowerClient(NumPyClient):
     """Cliente Flower para detecção de phishing com TinyBert."""
@@ -40,6 +41,7 @@ class PhishingFlowerClient(NumPyClient):
         self.train_dataset = None
         self.test_dataset = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.performance_monitor = PerformanceMonitor()
         
         print(f"[Cliente {client_id}] Inicializando cliente...")
         print(f"[Cliente {client_id}] Dispositivo: {self.device}")
@@ -102,6 +104,9 @@ class PhishingFlowerClient(NumPyClient):
         """Treina o modelo com os parâmetros recebidos."""
         print(f"[Cliente {self.client_id}] Iniciando treinamento - Rodada {config.get('server_round', 'N/A')}")
         
+        # Iniciar monitoramento de desempenho
+        self.performance_monitor.start_monitoring()
+        
         # Definir parâmetros recebidos do servidor
         self.set_parameters(parameters)
         
@@ -150,12 +155,22 @@ class PhishingFlowerClient(NumPyClient):
         train_loss = train_result.training_loss
         train_samples = len(self.train_dataset)
         
-        print(f"[Cliente {self.client_id}] Treinamento concluído - Loss: {train_loss:.4f}")
+        # Parar monitoramento e adicionar métricas de desempenho
+        energy_consumption, processing_time = self.performance_monitor.stop_monitoring()
+        
+        print(f"[Cliente {self.client_id}] Treinamento concluído:")
+        print(f"  - Loss: {train_loss:.4f}")
+        print(f"  - Energia: {energy_consumption:.2f}W")
+        print(f"  - Tempo: {processing_time:.2f}s")
         
         # Retornar parâmetros atualizados
         updated_parameters = self.get_parameters({})
         
-        return updated_parameters, train_samples, {"train_loss": train_loss}
+        return updated_parameters, train_samples, {
+            "train_loss": train_loss,
+            "energy_consumption": energy_consumption,
+            "processing_time": processing_time
+        }
     
     def evaluate(self, parameters: List[np.ndarray], config: Dict) -> Tuple[float, int, Dict]:
         """Avalia o modelo com os parâmetros recebidos."""
