@@ -1,0 +1,1 @@
+Para funcionar, o sistema deve estar no ambiente virtual conda federated_learning

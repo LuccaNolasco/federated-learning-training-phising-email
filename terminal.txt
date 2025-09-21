@@ -1,0 +1,23 @@
+  trainer = Trainer(
+[Cliente 1] Executando treinamento...
+  0%|                                                                                         | 0/2799 [00:00<?, ?it/s][TrainingTimeMonitor] Iniciando época 0
+ 33%|███████████████████████████████████████████████████████▊                                                            33%|██████████████████████████▎                                                    | 932/2799 [00:58<01:10, 26.66it/s]                                                                                         [TrainingTimeMonitor] Época 1.0 concluída:
+  - Tempo de treinamento efetivo: 29.01s
+  - Tempo total acumulado: 29.01s
+{'eval_loss': 0.21627822518348694, 'eval_accuracy': 0.9292225201072386, 'eval_f1': 0.9063829787234042, 'eval_precision': 0.9115549215406562, 'eval_recall': 0.9012693935119888, 'eval_runtime': 26.754, 'eval_samples_per_second': 69.709, 'eval_steps_per_second': 8.746, 'epoch': 1.0}
+ 33%|████████████████████████████████████████████████████████                                                                                                                | 933/2799 [01:26<01:09, 26.66it/s][TrainingTimeMonitor] Iniciando avaliação - pausando cronômetro████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 234/234 [00:03<00:00, 86.67it/s]
+                                                                                                                                                                                                                [TrainingTimeMonitor] Iniciando época 1.0
+ 67%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                                       | 1865/2799 [02:24<00:34, 26.70it/s][TrainingTimeMonitor] Época 2.0 concluída:
+  - Tempo de treinamento efetivo: 28.42s
+  - Tempo total acumulado: 57.43s
+{'eval_loss': 0.1714930534362793, 'eval_accuracy': 0.9351206434316354, 'eval_f1': 0.9149683766690091, 'eval_precision': 0.9117647058823529, 'eval_recall': 0.918194640338505, 'eval_runtime': 26.2934, 'eval_samples_per_second': 70.93, 'eval_steps_per_second': 8.9, 'epoch': 2.0}
+ 67%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                                       | 1866/2799 [02:51<00:34, 26.70it/s][TrainingTimeMonitor] Iniciando avaliação - pausando cronômetro████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 234/234 [00:04<00:00, 78.34it/s]
+                                                                                                                                                                                                                [TrainingTimeMonitor] Iniciando época 2.0
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2799/2799 [03:50<00:00,  6.89it/s][TrainingTimeMonitor] Época 3.0 concluída:
+  - Tempo de treinamento efetivo: 28.17s
+  - Tempo total acumulado: 85.60s
+{'eval_loss': 0.17097605764865875, 'eval_accuracy': 0.9378016085790885, 'eval_f1': 0.9180790960451978, 'eval_precision': 0.9193776520509194, 'eval_recall': 0.9167842031029619, 'eval_runtime': 26.45, 'eval_samples_per_second': 70.51, 'eval_steps_per_second': 8.847, 'epoch': 3.0}
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2799/2799 [04:17<00:00,  6.89it/s][TrainingTimeMonitor] Iniciando avaliação - pausando cronômetro████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 234/234 [00:03<00:00, 22.08it/s]
+{'train_runtime': 257.4137, 'train_samples_per_second': 86.942, 'train_steps_per_second': 10.874, 'train_loss': 0.25969759009914256, 'epoch': 3.0}
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2799/2799 [04:17<00:00,  6.89it/s]
+[TrainingTimeMonitor] Treinamento concluído!

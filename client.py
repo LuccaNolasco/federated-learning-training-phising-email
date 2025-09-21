@@ -104,8 +104,12 @@ class PhishingFlowerClient(NumPyClient):
         """Treina o modelo com os parâmetros recebidos."""
         print(f"[Cliente {self.client_id}] Iniciando treinamento - Rodada {config.get('server_round', 'N/A')}")
         
-        # Iniciar monitoramento de desempenho
-        self.performance_monitor.start_monitoring()
+        # Inicializar monitor de desempenho preciso
+        from training_time_monitor import PrecisePerformanceMonitor
+        performance_monitor = PrecisePerformanceMonitor()
+        
+        # Iniciar monitoramento de energia
+        performance_monitor.start_energy_monitoring()
         
         # Definir parâmetros recebidos do servidor
         self.set_parameters(parameters)
@@ -135,9 +139,10 @@ class PhishingFlowerClient(NumPyClient):
             gradient_checkpointing=training_config["gradient_checkpointing"],
             report_to=None,  # Desabilitar relatórios
             save_total_limit=1,  # Manter apenas o último checkpoint
+            log_level="error",  # Reduzir verbosidade dos logs
         )
         
-        # Criar trainer
+        # Configurar trainer com callback de tempo preciso
         trainer = Trainer(
             model=self.model,
             args=training_args,
@@ -145,23 +150,34 @@ class PhishingFlowerClient(NumPyClient):
             eval_dataset=self.test_dataset,
             tokenizer=self.tokenizer,
             compute_metrics=self.compute_metrics,
+            callbacks=[performance_monitor.get_training_callback()],
         )
         
         # Treinar modelo
-        print(f"[Cliente {self.client_id}] Executando treinamento...")
+        print(f"\n{'🚀'*20}")
+        print(f"🚀 INICIANDO TREINAMENTO - Cliente {self.client_id}")
+        print(f"{'🚀'*20}")
         train_result = trainer.train()
         
         # Obter métricas de treinamento
         train_loss = train_result.training_loss
         train_samples = len(self.train_dataset)
         
-        # Parar monitoramento e adicionar métricas de desempenho
-        energy_consumption, processing_time = self.performance_monitor.stop_monitoring()
+        # Parar monitoramento e obter métricas (tempo preciso, excluindo avaliações)
+        energy_consumption, processing_time = performance_monitor.stop_monitoring()
         
-        print(f"[Cliente {self.client_id}] Treinamento concluído:")
-        print(f"  - Loss: {train_loss:.4f}")
-        print(f"  - Energia: {energy_consumption:.2f}W")
-        print(f"  - Tempo: {processing_time:.2f}s")
+        # Obter métricas detalhadas para debug
+        detailed_metrics = performance_monitor.get_detailed_metrics()
+        
+        # Exibir resumo final organizado
+        print(f"\n{'='*50}")
+        print(f"📊 RESUMO DO CLIENTE {self.client_id}")
+        print(f"{'='*50}")
+        print(f"🎯 Loss de Treinamento: {train_loss:.4f}")
+        print(f"⚡ Energia Consumida: {energy_consumption:.2f}W")
+        print(f"⏱️  Tempo de Processamento: {processing_time:.2f}s")
+        print(f"📈 Amostras Treinadas: {train_samples}")
+        print(f"{'='*50}\n")
         
         # Retornar parâmetros atualizados
         updated_parameters = self.get_parameters({})
@@ -174,7 +190,9 @@ class PhishingFlowerClient(NumPyClient):
     
     def evaluate(self, parameters: List[np.ndarray], config: Dict) -> Tuple[float, int, Dict]:
         """Avalia o modelo com os parâmetros recebidos."""
-        print(f"[Cliente {self.client_id}] Iniciando avaliação")
+        print(f"\n{'─'*40}")
+        print(f"🔍 AVALIAÇÃO - Cliente {self.client_id}")
+        print(f"{'─'*40}")
         
         # Definir parâmetros recebidos do servidor
         self.set_parameters(parameters)
@@ -216,10 +234,15 @@ class PhishingFlowerClient(NumPyClient):
             "recall": eval_result.get("eval_recall", 0.0)
         }
         
-        print(f"[Cliente {self.client_id}] Avaliação concluída:")
-        print(f"  - Loss: {eval_loss:.4f}")
-        print(f"  - Accuracy: {metrics['accuracy']:.4f}")
-        print(f"  - F1: {metrics['f1']:.4f}")
+        # Exibir resultados da avaliação de forma organizada
+        print(f"\n📋 RESULTADOS DA AVALIAÇÃO:")
+        print(f"  🎯 Loss: {eval_loss:.4f}")
+        print(f"  ✅ Accuracy: {metrics['accuracy']:.4f}")
+        print(f"  🎪 F1-Score: {metrics['f1']:.4f}")
+        print(f"  🎯 Precision: {metrics['precision']:.4f}")
+        print(f"  📊 Recall: {metrics['recall']:.4f}")
+        print(f"  📈 Amostras Avaliadas: {eval_samples}")
+        print(f"{'─'*40}\n")
         
         return eval_loss, eval_samples, metrics
 
@@ -257,21 +280,26 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"\n=== Iniciando Cliente Flower {args.client_id} ===")
-    print(f"Servidor: {args.server_address}")
-    print(f"Total de clientes: {args.num_clients}")
+    print(f"\n{'🌟'*25}")
+    print(f"🌟 INICIANDO CLIENTE FLOWER {args.client_id} 🌟")
+    print(f"{'🌟'*25}")
+    print(f"🌐 Servidor: {args.server_address}")
+    print(f"👥 Total de clientes: {args.num_clients}")
+    print(f"{'🌟'*25}\n")
     
     # Criar cliente
     client = PhishingFlowerClient(args.client_id, args.num_clients)
     
     # Conectar ao servidor
-    print(f"\n[Cliente {args.client_id}] Conectando ao servidor...")
+    print(f"🔗 Conectando ao servidor...")
     fl.client.start_numpy_client(
         server_address=args.server_address,
         client=client
     )
     
-    print(f"[Cliente {args.client_id}] Desconectado do servidor.")
+    print(f"\n{'👋'*20}")
+    print(f"👋 Cliente {args.client_id} desconectado do servidor")
+    print(f"{'👋'*20}\n")
 
 if __name__ == "__main__":
     main()
