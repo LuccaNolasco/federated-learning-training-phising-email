@@ -44,6 +44,7 @@ class MetricsCollector:
             'processing_time': []
         }
         self.client_metrics = {}
+        self.centralized_metrics = None
         self.round_data = []
         
     def add_server_metrics(self, round_num: int, accuracy: float, precision: float, 
@@ -130,7 +131,7 @@ class GraphGenerator:
         print(f"Gráfico salvo: {filepath}")
         return filepath
         
-    def create_ml_metrics_chart(self, server_metrics: Dict, client_metrics: Dict):
+    def create_ml_metrics_chart(self, server_metrics: Dict, client_metrics: Dict, centralized_metrics: Dict = None):
         """Cria gráfico comparativo das métricas de ML (acurácia, precisão, recall)."""
         fig, axes = plt.subplots(1, 3, figsize=(18, 6))
         
@@ -152,6 +153,12 @@ class GraphGenerator:
                 entities.append(f'Cliente {client_id}')
                 values.append(np.mean(client_data[metric]) * 100 if client_data[metric] else 0)
                 colors.append(client_colors[j % len(client_colors)])
+            
+            # Adicionar modelo centralizado se disponível
+            if centralized_metrics and metric in centralized_metrics:
+                entities.append('Centralizado')
+                values.append(centralized_metrics[metric] * 100)
+                colors.append('#FF6B35')  # Cor laranja para destacar
             
             # Criar barras
             bars = ax.bar(entities, values, color=colors, alpha=0.8, edgecolor='black', linewidth=1)
@@ -180,7 +187,7 @@ class GraphGenerator:
         print(f"Gráfico de métricas ML salvo: {filepath}")
         return filepath
         
-    def create_resource_usage_chart(self, server_metrics: Dict, client_metrics: Dict):
+    def create_resource_usage_chart(self, server_metrics: Dict, client_metrics: Dict, centralized_metrics: Dict = None):
         """Cria gráfico comparativo de consumo de recursos (energia e tempo)."""
         fig, axes = plt.subplots(1, 2, figsize=(15, 6))
         
@@ -195,6 +202,12 @@ class GraphGenerator:
             entities.append(f'Cliente {client_id}')
             energy_values.append(np.mean(client_data['energy_consumption']) if client_data['energy_consumption'] else 0)
             colors.append(client_colors[i % len(client_colors)])
+        
+        # Adicionar modelo centralizado se disponível
+        if centralized_metrics and 'energy_consumption' in centralized_metrics:
+            entities.append('Centralizado')
+            energy_values.append(centralized_metrics['energy_consumption'])
+            colors.append('#FF6B35')  # Cor laranja para destacar
         
         bars1 = ax1.bar(entities, energy_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1)
         
@@ -215,6 +228,10 @@ class GraphGenerator:
         
         for i, (client_id, client_data) in enumerate(client_metrics.items()):
             time_values.append(np.mean(client_data['processing_time']) if client_data['processing_time'] else 0)
+        
+        # Adicionar modelo centralizado se disponível
+        if centralized_metrics and 'processing_time' in centralized_metrics:
+            time_values.append(centralized_metrics['processing_time'])
         
         bars2 = ax2.bar(entities, time_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1)
         

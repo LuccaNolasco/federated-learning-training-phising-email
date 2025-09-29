@@ -31,6 +31,7 @@ from config import (
     SERVER_CONFIG, TRAINING_CONFIG
 )
 from graph_utils import MetricsCollector, GraphGenerator, PerformanceMonitor
+from centralized_model import CentralizedModel
 
 class PhishingFedAvg(FedAvg):
     """Estratégia FedAvg personalizada para detecção de phishing."""
@@ -40,6 +41,8 @@ class PhishingFedAvg(FedAvg):
         self.round_metrics = []
         self.metrics_collector = MetricsCollector()
         self.performance_monitor = PerformanceMonitor()
+        self.centralized_model = None
+        self.centralized_metrics = None
     
     def aggregate_fit(
         self,
@@ -340,7 +343,7 @@ def print_final_summary(strategy: PhishingFedAvg):
     
     # Métricas finais
     final_metrics = strategy.round_metrics[-1]
-    print("\nMétricas Finais:")
+    print("\nMétricas Finais do Modelo Federado:")
     print(f"  Loss: {final_metrics['loss']:.4f}")
     print(f"  Accuracy: {final_metrics['accuracy']:.4f}")
     print(f"  F1-Score: {final_metrics['f1']:.4f}")
@@ -348,6 +351,30 @@ def print_final_summary(strategy: PhishingFedAvg):
     print(f"  Recall: {final_metrics['recall']:.4f}")
     print(f"  Amostras totais: {final_metrics['samples']}")
     print(f"  Clientes participantes: {final_metrics['clients']}")
+    
+    # Treinar modelo centralizado
+    print("\n" + "="*60)
+    print("TREINAMENTO DO MODELO CENTRALIZADO")
+    print("="*60)
+    
+    try:
+        strategy.centralized_model = CentralizedModel()
+        strategy.centralized_metrics = strategy.centralized_model.train()
+        
+        print("\nMétricas Finais do Modelo Centralizado:")
+        print(f"  Accuracy: {strategy.centralized_metrics['accuracy']:.4f}")
+        print(f"  F1-Score: {strategy.centralized_metrics['f1']:.4f}")
+        print(f"  Precision: {strategy.centralized_metrics['precision']:.4f}")
+        print(f"  Recall: {strategy.centralized_metrics['recall']:.4f}")
+        print(f"  Tempo de processamento: {strategy.centralized_metrics['processing_time']:.2f}s")
+        print(f"  Consumo de energia: {strategy.centralized_metrics['energy_consumption']:.2f}J")
+        
+        # Adicionar métricas do modelo centralizado ao coletor
+        strategy.metrics_collector.centralized_metrics = strategy.centralized_metrics
+        
+    except Exception as e:
+        print(f"\nErro ao treinar modelo centralizado: {e}")
+        print("Continuando sem modelo centralizado...")
     
     # Gerar gráficos
     print("\n" + "="*60)
@@ -360,13 +387,15 @@ def print_final_summary(strategy: PhishingFedAvg):
         # Gerar gráficos de métricas de ML
         ml_chart_path = graph_generator.create_ml_metrics_chart(
             strategy.metrics_collector.server_metrics,
-            strategy.metrics_collector.client_metrics
+            strategy.metrics_collector.client_metrics,
+            strategy.centralized_metrics if hasattr(strategy, 'centralized_metrics') else None
         )
         
         # Gerar gráficos de recursos
         resource_chart_path = graph_generator.create_resource_usage_chart(
             strategy.metrics_collector.server_metrics,
-            strategy.metrics_collector.client_metrics
+            strategy.metrics_collector.client_metrics,
+            strategy.centralized_metrics if hasattr(strategy, 'centralized_metrics') else None
         )
         
         print(f"\nGráficos salvos com sucesso:")
