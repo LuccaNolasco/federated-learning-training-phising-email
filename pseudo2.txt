@@ -1,0 +1,28 @@
+\begin{algorithm}[H]
+\caption{Treinamento Federado com Agregação no Servidor (exemplo simples)}
+\label{alg:fed}
+\begin{algorithmic}[1]
+\Require $\mathcal{C} = \{c_1, \dots, c_N\}$ clientes; $R$ rodadas; $E$ épocas locais; $\eta$ taxa de aprendizado
+\State Servidor inicializa o modelo global $w^{(0)}$
+\For{$r \gets 1$ \textbf{até} $R$}
+  \State Servidor seleciona um subconjunto $S^{(r)} \subseteq \mathcal{C}$ de clientes disponíveis
+  \State Servidor envia o modelo global atual $w^{(r-1)}$ para cada cliente $c \in S^{(r)}$
+  \ForAll{clientes $c \in S^{(r)}$ \textbf{em paralelo}}
+    \State Cliente carrega seus dados locais $D_c$
+    \State $w_c \gets w^{(r-1)}$
+    \For{$e \gets 1$ \textbf{até} $E$}
+      \State $w_c \gets w_c - \eta \cdot \nabla \ell(w_c; D_c)$
+    \EndFor
+    \State Cliente envia ao servidor: pesos atualizados $w_c$ e tamanho $n_c \gets |D_c|$
+  \EndFor
+  \State Servidor agrega as atualizações recebidas (FedAvg ponderado):
+  \State $w^{(r)} \gets \dfrac{\sum_{c \in S^{(r)}} n_c \cdot w_c}{\sum_{c \in S^{(r)}} n_c}$
+  \State Servidor avalia opcionalmente $w^{(r)}$ em um conjunto de validação global $D_{val}$
+  \State Servidor envia o novo modelo global $w^{(r)}$ de volta aos clientes (ou mantém para a próxima rodada)
+\EndFor
+\State \Return modelo final $w^{(R)}$
+\end{algorithmic}
+\end{algorithm}
+
+Explicação (texto normal):
+O servidor começa inicializando um modelo global (por exemplo, uma rede neural com pesos $w^{(0)}$). Em cada rodada $r$, ele escolhe alguns clientes disponíveis e envia a eles o modelo global mais recente $w^{(r-1)}$. Cada cliente treina esse modelo localmente usando apenas seus próprios dados $D_c$ por $E$ épocas, gerando um modelo atualizado $w_c$ (sem compartilhar os dados brutos). Em seguida, o cliente envia ao servidor apenas os pesos atualizados (e, no exemplo, também o tamanho do seu conjunto de dados $n_c$). O servidor então combina (agrega) todas as atualizações recebidas por meio de uma média ponderada (FedAvg), formando o novo modelo global $w^{(r)}$. Por fim, esse modelo global atualizado é enviado novamente aos clientes, repetindo o ciclo até completar $R$ rodadas.

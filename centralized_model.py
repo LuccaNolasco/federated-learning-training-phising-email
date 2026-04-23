@@ -27,8 +27,8 @@ class CentralizedModel:
         self.tokenizer = None
         self.train_dataset = None
         self.test_dataset = None
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.performance_monitor = PerformanceMonitor()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.metrics = {
             'accuracy': 0.0,
             'precision': 0.0,

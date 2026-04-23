@@ -1,0 +1,98 @@
+\section*{Pseudocódigo do Sistema de Aprendizado Federado (Flower + TinyBERT)}
+
+Pacotes \LaTeX\ sugeridos para renderizar o pseudocódigo: \texttt{algorithm}, \texttt{algpseudocode}.
+
+\begin{algorithm}
+\caption{Servidor Flower com estratégia FedAvg customizada para detecção de phishing}
+\label{alg:server_flower_fedavg}
+\begin{algorithmic}[1]
+\Statex \textbf{Inicialização:}
+\State Definir $K$ (mínimo de clientes), $f_{\text{fit}}$ e $f_{\text{eval}}$
+\State Definir política de atualização (intervalo, volume de dados, queda de métricas, \textit{drift})
+\State Carregar modelo base e obter pesos globais iniciais $w$
+\State Preparar conjunto de validação do servidor $D_{\text{val}}$
+\State Inicializar monitoramento e registro de métricas
+\Statex \textbf{Operação Contínua:}
+\While{sistema estiver em produção}
+\State Aguardar gatilho de atualização conforme política definida
+\State Selecionar clientes para treino $S$ (aguardar $\geq K$ disponíveis)
+\For{cliente $k$ em $S$}
+\State Enviar pesos $w$ e instruções de treino
+\State Receber pesos locais $w_k$ e número de exemplos $n_k$
+\EndFor
+\State Agregar pesos via FedAvg e obter $w'$
+\State Avaliar $w'$ em $D_{\text{val}}$ e registrar métricas
+\If{métricas aprovadas}
+\State Atualizar modelo em produção ($w \gets w'$)
+\EndIf
+\State Persistir métricas e artefatos (gráficos, matrizes de confusão, relatórios)
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Cliente Flower $i$ (treino e avaliação local)}
+\label{alg:client_flower}
+\begin{algorithmic}[1]
+\Statex \textbf{Inicialização:}
+\State Preparar dados locais do cliente $i$ (particionar treino/teste)
+\State Carregar modelo local e conectar ao servidor
+\Statex \textbf{Loop do Cliente:}
+\While{cliente estiver ativo}
+\State Atualizar dados locais quando houver novos exemplos disponíveis
+\If{receber \texttt{FitIns} com pesos $w$}
+\State Aplicar pesos $w$ e treinar localmente no conjunto do cliente
+\State Retornar pesos atualizados, nº de amostras e \textit{loss} de treino
+\ElsIf{receber \texttt{EvaluateIns} com pesos $w$}
+\State Aplicar pesos $w$ e avaliar no teste local
+\State Salvar predições em \texttt{client\_predictions/client\_i\_predictions.pkl}
+\State Retornar loss e métricas (accuracy, precision, recall, f1)
+\EndIf
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\section*{Explicação do pseudocódigo (texto)}
+
+O pseudocódigo descreve um ciclo de Aprendizado Federado (Flower/FL) pensado para produção, composto por dois fluxos: 
+o do servidor (linhas 5–31) e o dos clientes (linhas 33–53). A lógica geral é: o servidor coordena atualizações do modelo e 
+os clientes treinam/avaliam localmente, enviando apenas pesos e métricas.
+
+Leitura guiada (com referência às linhas):
+
+Servidor (linhas 5–31).
+O servidor começa definindo parâmetros e políticas (linhas 10–14): o mínimo de clientes (K), as frações de participação (f_fit e f_eval), 
+a política de quando atualizar, os pesos globais atuais (w) e o conjunto de validação do servidor (D_val).
+
+Em seguida, entra em operação contínua (linha 16) e aguarda um gatilho de atualização (linha 17).
+Quando o gatilho ocorre, seleciona um subconjunto de clientes disponíveis (S) (linha 18) e envia para cada cliente 
+instruções de treino junto com os pesos atuais (linhas 19–22).
+
+Com as respostas, agrega as atualizações via FedAvg, gerando novos pesos candidatos (w') (linha 23), e valida o modelo agregado no conjunto do servidor
+ (linha 24).
+ 
+Se as métricas passarem nos critérios definidos, o servidor promove w' para produção (linhas 25–27); caso contrário, mantém o modelo atual e segue monitorando.
+Por fim, registra métricas e artefatos de acompanhamento (linha 28), mantendo histórico para comparação de versões e auditoria.
+
+Cliente (linhas 33–53).
+Cada cliente prepara seus dados e conecta ao servidor (linhas 37–42).
+O cliente também opera continuamente enquanto estiver ativo (linha 41) e pode incorporar novos dados locais ao longo do tempo (linha 42).
+Ao receber FitIns (linhas 43–45), ele aplica os pesos recebidos (w), treina localmente e retorna pesos atualizados, número de amostras e loss de treino.
+Ao receber EvaluateIns (linhas 46–50), ele avalia no teste local, salva predições e retorna loss e métricas (accuracy, precision, recall, f1).
+
+Glossário (símbolos e mensagens):
+
+K: número mínimo de clientes disponíveis para iniciar uma etapa (treino/avaliação).
+f_fit: fração (ou política equivalente) de clientes selecionados para a etapa de treino em cada ciclo.
+f_eval: fração (ou política equivalente) de clientes selecionados para a etapa de avaliação em cada ciclo.
+w: pesos globais atuais do modelo no servidor (modelo em produção no ciclo atual).
+w': pesos globais candidatos após agregação das atualizações recebidas no ciclo.
+w_k: pesos/atualização devolvidos pelo cliente k após treino local.
+n_k: número de exemplos usados pelo cliente k no treino local (serve para ponderar a agregação).
+S: conjunto de clientes selecionados para participar do treino no ciclo de atualização (subconjunto dos clientes disponíveis).
+D_val: conjunto de validação mantido pelo servidor para checar desempenho antes de promover um modelo.
+FitIns: mensagem/instrução do Flower para o cliente executar treino local (fit) com pesos w e hiperparâmetros.
+EvaluateIns: mensagem/instrução do Flower para o cliente executar avaliação local (evaluate) com pesos w.
+FedAvg: estratégia de agregação que combina atualizações dos clientes em uma média ponderada por n_k.
+Gatilho de atualização: condição que inicia um novo ciclo federado (ex.: periodicidade, chegada de dados, queda de métricas, drift).
+Métricas aprovadas: critério de qualidade para promover w' para produção (ex.: atingir F1 mínima, não aumentar loss, etc.).

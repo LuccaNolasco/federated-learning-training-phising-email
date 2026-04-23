@@ -9,6 +9,8 @@ import torch
 import numpy as np
 from collections import OrderedDict
 from typing import Dict, List, Tuple
+import os
+import pickle
 
 import flwr as fl
 from flwr.client import NumPyClient, ClientApp
@@ -223,6 +225,14 @@ class PhishingFlowerClient(NumPyClient):
         # Avaliar modelo
         eval_result = trainer.evaluate()
         
+        # NOVA FUNCIONALIDADE: Coletar predições para matriz de confusão
+        predictions = trainer.predict(self.test_dataset)
+        y_pred = np.argmax(predictions.predictions, axis=1)
+        y_true = predictions.label_ids
+        
+        # Salvar predições para geração posterior de matriz de confusão
+        self._save_predictions(y_true, y_pred)
+        
         eval_loss = eval_result["eval_loss"]
         eval_samples = len(self.test_dataset)
         
@@ -245,6 +255,24 @@ class PhishingFlowerClient(NumPyClient):
         print(f"{'─'*40}\n")
         
         return eval_loss, eval_samples, metrics
+    
+    def _save_predictions(self, y_true: np.ndarray, y_pred: np.ndarray):
+        """Salva as predições do cliente para geração posterior de matriz de confusão."""
+        # Criar diretório se não existir
+        os.makedirs("client_predictions", exist_ok=True)
+        
+        # Salvar predições
+        predictions_data = {
+            'client_id': self.client_id,
+            'y_true': y_true,
+            'y_pred': y_pred
+        }
+        
+        filename = f"client_predictions/client_{self.client_id}_predictions.pkl"
+        with open(filename, 'wb') as f:
+            pickle.dump(predictions_data, f)
+        
+        print(f"[Cliente {self.client_id}] Predições salvas em: {filename}")
 
 def client_fn(context: Context) -> fl.client.Client:
     """Função para criar instância do cliente Flower."""

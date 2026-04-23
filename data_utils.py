@@ -181,7 +181,7 @@ def test_phrase(model, tokenizer, text):
     
     # Processar resultado
     probs = torch.nn.functional.softmax(outputs.logits, dim=1)
-    pred = torch.argmax(probs).item()
+    pred = torch.argmax(probs, dim=1).item()
     label = "Phishing" if pred == 1 else "Legítimo"
     confidence = probs[0][pred].item()
     
